@@ -2,6 +2,9 @@ import { Room, Client } from "colyseus";
 import { Schema, type, MapSchema } from "@colyseus/schema";
 
 export class Player extends Schema {
+    @type("int8")
+    skin = 0;
+
     @type("number")
     x = Math.floor(Math.random() * 256) - 128;
 
@@ -18,8 +21,10 @@ export class State extends Schema {
 
     something = "This attribute won't be sent to the client-side";
 
-    createPlayer(sessionId: string) {
-        this.players.set(sessionId, new Player());
+    createPlayer(sessionId: string, skin: number) {
+        const player = new Player();
+        player.skin = skin;
+        this.players.set(sessionId, player);
     }
 
     removePlayer(sessionId: string) {
@@ -33,10 +38,15 @@ export class State extends Schema {
 }
 
 export class StateHandlerRoom extends Room<State> {
-    maxClients = 4;
+    maxClients = 1000;
+    skins: number[] = [0]
 
     onCreate (options) {
         console.log("StateHandlerRoom created!", options);
+
+        for (var i = 1; i < options.skins; i++){
+            this.skins.push(i)
+        }
 
         this.setState(new State());
 
@@ -50,7 +60,9 @@ export class StateHandlerRoom extends Room<State> {
     }
 
     onJoin (client: Client) {
-        this.state.createPlayer(client.sessionId);
+        const randomIndex = Math.floor(Math.random() * this.skins.length);
+        const skin = this.skins[randomIndex];
+        this.state.createPlayer(client.sessionId, skin);
     }
 
     onLeave (client) {
